@@ -12,6 +12,7 @@ import { Demo } from "./pages/Demo";
 import Login from "./pages/Login";
 import CreateTicket from "./pages/CreateTicket";
 import AdminTickets from "./pages/AdminTickets";
+import AdminUsers from "./pages/AdminUsers";
 import { useAuth } from "./hooks/useAuth";
 
 function WithAuth({ component: Component }) {
@@ -33,6 +34,7 @@ export const router = createBrowserRouter(
       <Route path="/login" element={<Login />} />
       <Route path="/create-ticket" element={<WithAuth component={CreateTicket} />} />
       <Route path="/admin-tickets" element={<WithAuth component={AdminTickets} />} />
+      <Route path="/admin-users" element={<WithAuth component={AdminUsers} />} />
       <Route path="/single/:theId" element={<Single />} />
       <Route path="/demo" element={<Demo />} />
     </Route>

@@ -259,6 +259,30 @@ const AdminTickets = ({ user }) => {
                         </div>
                     </div>
                 )}
+
+                {/* Action Buttons */}
+                <div className="d-flex justify-content-end mb-3">
+                    <a href="/admin-users" className="btn btn-outline-secondary me-2">
+                        <i className="fas fa-users me-1"></i> Administrar Usuarios
+                    </a>
+                    <button className="btn btn-outline-success" onClick={async () => {
+                        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/admin/export_tickets?admin_id=${currentUser.id}`);
+                        if (res.ok) {
+                            const blob = await res.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'tickets.xlsx';
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                        } else {
+                            setMsg("Error al exportar");
+                        }
+                    }}>
+                        <i className="fas fa-file-excel me-1"></i> Exportar a Excel
+                    </button>
+                </div>
             </div>
         </div>
     );

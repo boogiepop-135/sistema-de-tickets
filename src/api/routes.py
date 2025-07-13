@@ -5,6 +5,9 @@ from flask import Flask, request, jsonify, url_for, Blueprint
 from api.models import db, User, Ticket
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
+import io
+import pandas as pd
+from flask import send_file
 
 api = Blueprint('api', __name__)
 
@@ -78,3 +81,81 @@ def get_tickets():
     else:
         tickets = Ticket.query.filter_by(user_id=user_id).all()
     return jsonify([t.serialize() for t in tickets]), 200
+
+# Crear usuario (solo admin)
+
+
+@api.route('/admin/create_user', methods=['POST'])
+def admin_create_user():
+    data = request.json
+    admin_id = data.get('admin_id')
+    admin = User.query.get(admin_id)
+    if not admin or admin.role != 'admin':
+        return jsonify({"msg": "Solo el admin puede crear usuarios"}), 403
+    if not data.get('email') or not data.get('password'):
+        return jsonify({"msg": "Faltan datos"}), 400
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({"msg": "Usuario ya existe"}), 400
+    user = User(email=data['email'], password=data['password'],
+                is_active=True, role=data.get('role', 'user'))
+    db.session.add(user)
+    db.session.commit()
+    return jsonify(user.serialize()), 201
+
+# Exportar tickets a Excel (solo admin)
+
+
+@api.route('/admin/export_tickets', methods=['GET'])
+def export_tickets():
+    admin_id = request.args.get('admin_id')
+    admin = User.query.get(admin_id)
+    if not admin or admin.role != 'admin':
+        return jsonify({"msg": "Solo el admin puede exportar"}), 403
+    tickets = Ticket.query.all()
+    df = pd.DataFrame([t.serialize() for t in tickets])
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Tickets')
+    output.seek(0)
+    return send_file(output, download_name='tickets.xlsx', as_attachment=True)
+
+
+@api.route('/admin/edit_user/<int:user_id>', methods=['PUT'])
+def admin_edit_user(user_id):
+    data = request.json
+    admin_id = data.get('admin_id')
+    admin = User.query.get(admin_id)
+    if not admin or admin.role != 'admin':
+        return jsonify({"msg": "Solo el admin puede editar usuarios"}), 403
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "Usuario no encontrado"}), 404
+    user.email = data.get('email', user.email)
+    user.password = data.get('password', user.password)
+    user.role = data.get('role', user.role)
+    db.session.commit()
+    return jsonify(user.serialize()), 200
+
+
+@api.route('/admin/delete_user/<int:user_id>', methods=['DELETE'])
+def admin_delete_user(user_id):
+    admin_id = request.args.get('admin_id')
+    admin = User.query.get(admin_id)
+    if not admin or admin.role != 'admin':
+        return jsonify({"msg": "Solo el admin puede eliminar usuarios"}), 403
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "Usuario no encontrado"}), 404
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"msg": "Usuario eliminado"}), 200
+
+
+@api.route('/admin/users', methods=['GET'])
+def admin_list_users():
+    admin_id = request.args.get('admin_id')
+    admin = User.query.get(admin_id)
+    if not admin or admin.role != 'admin':
+        return jsonify({"msg": "Solo el admin puede ver usuarios"}), 403
+    users = User.query.all()
+    return jsonify([u.serialize() for u in users]), 200
