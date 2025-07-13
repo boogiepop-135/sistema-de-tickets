@@ -1,3 +1,4 @@
+// Force rebuild - 13 julio 2025
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 
