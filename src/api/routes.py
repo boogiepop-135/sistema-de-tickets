@@ -211,3 +211,62 @@ def create_test_users():
         
     except Exception as e:
         return jsonify({"msg": f"Error creando usuarios: {str(e)}"}), 500
+
+# Ruta para inicializar la base de datos (temporal para resolver el problema)
+@api.route('/init-database', methods=['POST'])
+def init_database():
+    try:
+        # Forzar creación de todas las tablas
+        db.create_all()
+        
+        # Crear usuario admin de prueba
+        admin_user = User.query.filter_by(username='admin').first()
+        if not admin_user:
+            admin_user = User(
+                username='admin',
+                email='admin@test.com',
+                password='admin123',
+                is_active=True,
+                role='admin'
+            )
+            db.session.add(admin_user)
+        
+        # Crear usuario normal de prueba
+        normal_user = User.query.filter_by(username='user').first()
+        if not normal_user:
+            normal_user = User(
+                username='user',
+                email='user@test.com',
+                password='user123',
+                is_active=True,
+                role='user'
+            )
+            db.session.add(normal_user)
+        
+        # Crear tu usuario específico
+        levi_user = User.query.filter_by(username='Levi').first()
+        if not levi_user:
+            levi_user = User(
+                username='Levi',
+                email='levi@test.com',
+                password='Leaguejinx1310-',
+                is_active=True,
+                role='admin'
+            )
+            db.session.add(levi_user)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "msg": "Base de datos inicializada correctamente",
+            "tables_created": True,
+            "users_created": [
+                {"username": "admin", "password": "admin123", "role": "admin"},
+                {"username": "user", "password": "user123", "role": "user"},
+                {"username": "Levi", "password": "Leaguejinx1310-", "role": "admin"}
+            ]
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"msg": f"Error inicializando base de datos: {str(e)}"}), 500

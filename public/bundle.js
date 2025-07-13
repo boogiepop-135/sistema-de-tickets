@@ -95,13 +95,13 @@ const router = {
                                 </p>
                                 <div class="d-flex gap-3 mb-3">
                                     ${!window.currentUser ? `
+                                        <button class="btn btn-danger btn-lg" onclick="initDatabase()">
+                                            <i class="fas fa-database me-2"></i>
+                                            Inicializar Base de Datos
+                                        </button>
                                         <button class="btn btn-primary btn-lg" onclick="router.navigate('/login')">
                                             <i class="fas fa-sign-in-alt me-2"></i>
                                             Iniciar Sesión
-                                        </button>
-                                        <button class="btn btn-outline-primary btn-lg" onclick="createTestUsers()">
-                                            <i class="fas fa-users me-2"></i>
-                                            Crear Usuarios de Prueba
                                         </button>
                                     ` : `
                                         <button class="btn btn-primary btn-lg" onclick="router.navigate('/create-ticket')">
@@ -117,8 +117,10 @@ const router = {
                                     `}
                                 </div>
                                 ${!window.currentUser ? `
-                                    <div class="alert alert-info">
-                                        <strong>Usuarios de prueba:</strong><br>
+                                    <div class="alert alert-warning">
+                                        <strong>⚠️ PASO 1:</strong> Haz clic en "Inicializar Base de Datos" primero.<br>
+                                        <strong>📝 PASO 2:</strong> Luego usa las credenciales para iniciar sesión.<br><br>
+                                        <strong>Usuarios disponibles:</strong><br>
                                         • admin / admin123 (administrador)<br>
                                         • user / user123 (usuario)<br>
                                         • Levi / Leaguejinx1310- (administrador)
@@ -555,6 +557,28 @@ async function createTestUsers() {
         }
     } catch (error) {
         alert('Error de conexión al crear usuarios');
+    }
+}
+
+// Función para inicializar la base de datos
+async function initDatabase() {
+    try {
+        const response = await fetchAPI('/api/init-database', {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Base de datos inicializada correctamente!\n\nTablas creadas y usuarios disponibles:\n- admin / admin123 (admin)\n- user / user123 (user)\n- Levi / Leaguejinx1310- (admin)');
+            return true;
+        } else {
+            alert(`Error: ${data.msg}`);
+            return false;
+        }
+    } catch (error) {
+        alert('Error de conexión al inicializar base de datos');
+        return false;
     }
 }
 
