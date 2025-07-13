@@ -7,6 +7,8 @@ db = SQLAlchemy()
 
 class User(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(
+        String(80), unique=True, nullable=False)  # Nuevo campo username
     email: Mapped[str] = mapped_column(
         String(120), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
@@ -17,6 +19,7 @@ class User(db.Model):
     def serialize(self):
         return {
             "id": self.id,
+            "username": self.username,
             "email": self.email,
             "role": self.role,
             # do not serialize the password, its a security breach

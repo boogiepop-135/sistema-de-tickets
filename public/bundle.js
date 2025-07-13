@@ -55,7 +55,7 @@ const router = {
                     <div class="navbar-nav ms-auto d-flex flex-row align-items-center">
                         ${window.currentUser ? `
                             <span class="navbar-text me-3 text-light">
-                                Bienvenido, <strong>${window.currentUser.email}</strong>
+                                Bienvenido, <strong>${window.currentUser.username}</strong>
                                 <span class="badge bg-warning text-dark ms-2">${window.currentUser.role}</span>
                             </span>
                             ${window.currentUser.role === 'admin' ? `
@@ -135,8 +135,8 @@ const router = {
                                         </div>
                                         <form id="loginForm">
                                             <div class="mb-3">
-                                                <label for="email" class="form-label">Email</label>
-                                                <input type="email" class="form-control" id="email" required>
+                                                <label for="username" class="form-label">Nombre de Usuario</label>
+                                                <input type="text" class="form-control" id="username" required>
                                             </div>
                                             <div class="mb-3">
                                                 <label for="password" class="form-label">Contraseña</label>
@@ -310,14 +310,14 @@ async function fetchAPI(endpoint, options = {}) {
 async function handleLogin(e) {
     e.preventDefault();
     
-    const email = document.getElementById('email').value;
+    const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     const messageDiv = document.getElementById('loginMessage');
     
     try {
         const response = await fetchAPI('/api/login', {
             method: 'POST',
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ username, password })
         });
         
         const data = await response.json();

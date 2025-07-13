@@ -19,33 +19,29 @@ CORS(api)
 @api.route('/register', methods=['POST'])
 def register():
     data = request.json
-    if not data.get('email') or not data.get('password'):
-        return jsonify({"msg": "Faltan datos"}), 400
+    if not data.get('username') or not data.get('email') or not data.get('password'):
+        return jsonify({"msg": "Faltan datos (username, email, password)"}), 400
     if User.query.filter_by(email=data['email']).first():
-        return jsonify({"msg": "Usuario ya existe"}), 400
-    user = User(email=data['email'], password=data['password'],
+        return jsonify({"msg": "El email ya existe"}), 400
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({"msg": "El nombre de usuario ya existe"}), 400
+    user = User(username=data['username'], email=data['email'], password=data['password'],
                 is_active=True, role=data.get('role', 'user'))
     db.session.add(user)
     db.session.commit()
     return jsonify(user.serialize()), 201
 
-# Login de usuario (simple, sin JWT por ahora)
+# Login de usuario con username
 
 
 @api.route('/login', methods=['POST'])
 def login():
     data = request.json
-    email_or_username = data.get('email')
+    username = data.get('username')
     password = data.get('password')
 
-    # Buscar por email o por nombre de usuario (si no contiene @)
-    if '@' in email_or_username:
-        user = User.query.filter_by(
-            email=email_or_username, password=password).first()
-    else:
-        # Si no contiene @, buscar por email usando el valor como nombre de usuario
-        user = User.query.filter_by(
-            email=email_or_username, password=password).first()
+    # Buscar por nombre de usuario
+    user = User.query.filter_by(username=username, password=password).first()
 
     if not user:
         return jsonify({"msg": "Credenciales incorrectas"}), 401
