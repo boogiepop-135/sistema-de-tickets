@@ -93,19 +93,37 @@ const router = {
                                     Gestiona y resuelve tickets de soporte de manera eficiente.
                                     Plataforma completa para atención al cliente y soporte técnico.
                                 </p>
-                                <div class="d-flex gap-3">
+                                <div class="d-flex gap-3 mb-3">
                                     ${!window.currentUser ? `
                                         <button class="btn btn-primary btn-lg" onclick="router.navigate('/login')">
                                             <i class="fas fa-sign-in-alt me-2"></i>
                                             Iniciar Sesión
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-lg" onclick="createTestUsers()">
+                                            <i class="fas fa-users me-2"></i>
+                                            Crear Usuarios de Prueba
                                         </button>
                                     ` : `
                                         <button class="btn btn-primary btn-lg" onclick="router.navigate('/create-ticket')">
                                             <i class="fas fa-plus me-2"></i>
                                             Crear Ticket
                                         </button>
+                                        ${window.currentUser.role === 'admin' ? `
+                                            <button class="btn btn-success btn-lg" onclick="router.navigate('/admin-tickets')">
+                                                <i class="fas fa-tasks me-2"></i>
+                                                Ver Tickets
+                                            </button>
+                                        ` : ''}
                                     `}
                                 </div>
+                                ${!window.currentUser ? `
+                                    <div class="alert alert-info">
+                                        <strong>Usuarios de prueba:</strong><br>
+                                        • admin / admin123 (administrador)<br>
+                                        • user / user123 (usuario)<br>
+                                        • Levi / Leaguejinx1310- (administrador)
+                                    </div>
+                                ` : ''}
                             </div>
                             <div class="col-lg-6">
                                 <div class="text-center">
@@ -113,8 +131,40 @@ const router = {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Features Section -->
+                        <div class="row">
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-ticket-alt text-primary mb-3" style="font-size: 3rem;"></i>
+                                        <h5 class="card-title">Crear Tickets</h5>
+                                        <p class="card-text">Reporta problemas o solicita soporte de manera fácil y rápida.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-chart-line text-success mb-3" style="font-size: 3rem;"></i>
+                                        <h5 class="card-title">Seguimiento</h5>
+                                        <p class="card-text">Monitorea el estado de tus tickets en tiempo real.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-users text-info mb-3" style="font-size: 3rem;"></i>
+                                        <h5 class="card-title">Gestión</h5>
+                                        <p class="card-text">Administra tickets y usuarios desde un panel centralizado.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                ${this.renderFooter()}
             </div>
         `;
     },
@@ -286,6 +336,46 @@ const router = {
         
         // Cargar usuarios
         loadAdminUsers();
+    },
+    
+    renderFooter() {
+        return `
+            <footer class="bg-dark text-white py-4 mt-auto">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-ticket-alt me-2"></i>Sistema de Tickets</h5>
+                            <p class="mb-0">Plataforma completa para gestión de soporte técnico y atención al cliente.</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Enlaces Rápidos</h6>
+                            <ul class="list-unstyled">
+                                <li><a href="/" class="text-light" onclick="router.navigate('/')">Inicio</a></li>
+                                <li><a href="/login" class="text-light" onclick="router.navigate('/login')">Iniciar Sesión</a></li>
+                                ${window.currentUser ? `
+                                    <li><a href="/create-ticket" class="text-light" onclick="router.navigate('/create-ticket')">Crear Ticket</a></li>
+                                ` : ''}
+                            </ul>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Contacto</h6>
+                            <p class="mb-1"><i class="fas fa-envelope me-2"></i>soporte@tickets.com</p>
+                            <p class="mb-1"><i class="fas fa-phone me-2"></i>+1 (555) 123-4567</p>
+                            <p class="mb-0"><i class="fas fa-clock me-2"></i>24/7 Disponible</p>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <p class="mb-0">&copy; 2025 Sistema de Tickets. Todos los derechos reservados.</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <small class="text-muted">Versión 1.0.0 | Desarrollado con Flask & Bootstrap</small>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        `;
     }
 };
 
@@ -423,6 +513,7 @@ async function loadAdminUsers() {
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>Username</th>
                                 <th>Email</th>
                                 <th>Rol</th>
                             </tr>
@@ -431,6 +522,7 @@ async function loadAdminUsers() {
                             ${data.map(user => `
                                 <tr>
                                     <td><span class="badge bg-primary">#${user.id}</span></td>
+                                    <td><strong>${user.username}</strong></td>
                                     <td>${user.email}</td>
                                     <td><span class="badge bg-${user.role === 'admin' ? 'warning' : 'secondary'}">${user.role}</span></td>
                                 </tr>
@@ -444,6 +536,25 @@ async function loadAdminUsers() {
         }
     } catch (error) {
         document.getElementById('usersContainer').innerHTML = '<div class="alert alert-danger">Error al cargar usuarios</div>';
+    }
+}
+
+// Función para crear usuarios de prueba
+async function createTestUsers() {
+    try {
+        const response = await fetchAPI('/api/create-test-users', {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Usuarios de prueba creados exitosamente!\n\nUsuarios disponibles:\n- admin / admin123 (admin)\n- user / user123 (user)\n- Levi / Leaguejinx1310- (admin)');
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error de conexión al crear usuarios');
     }
 }
 

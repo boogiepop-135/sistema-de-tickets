@@ -88,11 +88,13 @@ def admin_create_user():
     admin = User.query.get(admin_id)
     if not admin or admin.role != 'admin':
         return jsonify({"msg": "Solo el admin puede crear usuarios"}), 403
-    if not data.get('email') or not data.get('password'):
-        return jsonify({"msg": "Faltan datos"}), 400
+    if not data.get('username') or not data.get('email') or not data.get('password'):
+        return jsonify({"msg": "Faltan datos (username, email, password)"}), 400
     if User.query.filter_by(email=data['email']).first():
-        return jsonify({"msg": "Usuario ya existe"}), 400
-    user = User(email=data['email'], password=data['password'],
+        return jsonify({"msg": "El email ya existe"}), 400
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({"msg": "El nombre de usuario ya existe"}), 400
+    user = User(username=data['username'], email=data['email'], password=data['password'],
                 is_active=True, role=data.get('role', 'user'))
     db.session.add(user)
     db.session.commit()
@@ -155,3 +157,57 @@ def admin_list_users():
         return jsonify({"msg": "Solo el admin puede ver usuarios"}), 403
     users = User.query.all()
     return jsonify([u.serialize() for u in users]), 200
+
+# Ruta para crear usuarios de prueba (temporal)
+@api.route('/create-test-users', methods=['POST'])
+def create_test_users():
+    try:
+        # Crear usuario admin de prueba
+        admin_user = User.query.filter_by(username='admin').first()
+        if not admin_user:
+            admin_user = User(
+                username='admin',
+                email='admin@test.com',
+                password='admin123',
+                is_active=True,
+                role='admin'
+            )
+            db.session.add(admin_user)
+        
+        # Crear usuario normal de prueba
+        normal_user = User.query.filter_by(username='user').first()
+        if not normal_user:
+            normal_user = User(
+                username='user',
+                email='user@test.com',
+                password='user123',
+                is_active=True,
+                role='user'
+            )
+            db.session.add(normal_user)
+        
+        # Crear tu usuario específico
+        levi_user = User.query.filter_by(username='Levi').first()
+        if not levi_user:
+            levi_user = User(
+                username='Levi',
+                email='levi@test.com',
+                password='Leaguejinx1310-',
+                is_active=True,
+                role='admin'
+            )
+            db.session.add(levi_user)
+        
+        db.session.commit()
+        
+        return jsonify({
+            "msg": "Usuarios de prueba creados exitosamente",
+            "users": [
+                {"username": "admin", "password": "admin123", "role": "admin"},
+                {"username": "user", "password": "user123", "role": "user"},
+                {"username": "Levi", "password": "Leaguejinx1310-", "role": "admin"}
+            ]
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"msg": f"Error creando usuarios: {str(e)}"}), 500
