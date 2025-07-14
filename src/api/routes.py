@@ -362,6 +362,38 @@ def init_database():
             )
             db.session.add(levi_user)
         
+        # Crear algunos tickets de ejemplo
+        from datetime import datetime
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Ticket de ejemplo 1
+        if not Ticket.query.filter_by(title='Ticket de prueba 1').first():
+            sample_ticket1 = Ticket(
+                title='Ticket de prueba 1',
+                description='Este es un ticket de ejemplo para probar el sistema',
+                status='open',
+                priority='medium',
+                category='general',
+                created_at=current_time,
+                updated_at=current_time,
+                user_id=1
+            )
+            db.session.add(sample_ticket1)
+        
+        # Ticket de ejemplo 2
+        if not Ticket.query.filter_by(title='Problema técnico').first():
+            sample_ticket2 = Ticket(
+                title='Problema técnico',
+                description='Error en el sistema que necesita atención urgente',
+                status='pending',
+                priority='high',
+                category='technical',
+                created_at=current_time,
+                updated_at=current_time,
+                user_id=2
+            )
+            db.session.add(sample_ticket2)
+        
         db.session.commit()
         
         return jsonify({
@@ -371,7 +403,8 @@ def init_database():
                 {"username": "admin", "password": "admin123", "role": "admin"},
                 {"username": "user", "password": "user123", "role": "user"},
                 {"username": "Levi", "password": "Leaguejinx1310-", "role": "admin"}
-            ]
+            ],
+            "sample_tickets_created": 2
         }), 201
         
     except Exception as e:

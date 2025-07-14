@@ -31,12 +31,16 @@ def upgrade():
         sa.UniqueConstraint('username')
     )
     
-    # Create ticket table
+    # Create ticket table with all required fields
     op.create_table('ticket',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('title', sa.String(length=120), nullable=False),
         sa.Column('description', sa.String(length=500), nullable=False),
         sa.Column('status', sa.String(length=20), nullable=False),
+        sa.Column('priority', sa.String(length=20), nullable=False),
+        sa.Column('category', sa.String(length=50), nullable=False),
+        sa.Column('created_at', sa.String(length=30), nullable=False),
+        sa.Column('updated_at', sa.String(length=30), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
         sa.PrimaryKeyConstraint('id')
