@@ -28,8 +28,7 @@ def register():
     data = request.json
     if not data.get('username') or not data.get('email') or not data.get('password'):
         return jsonify({"msg": "Faltan datos (username, email, password)"}), 400
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({"msg": "El email ya existe"}), 400
+    # Solo verificar que el username sea único, no el email
     if User.query.filter_by(username=data['username']).first():
         return jsonify({"msg": "El nombre de usuario ya existe"}), 400
     user = User(username=data['username'], email=data['email'], password=data['password'],
@@ -147,7 +146,17 @@ def get_ticket(ticket_id):
     if ticket.user_id != int(user_id) and user.role != 'admin':
         return jsonify({"msg": "No tienes permisos para ver este ticket"}), 403
     
-    return jsonify(ticket.serialize()), 200
+    # Incluir información del usuario creador
+    ticket_data = ticket.serialize()
+    creator = User.query.get(ticket.user_id)
+    if creator:
+        ticket_data['creator_username'] = creator.username
+        ticket_data['creator_email'] = creator.email
+    else:
+        ticket_data['creator_username'] = 'Usuario eliminado'
+        ticket_data['creator_email'] = 'N/A'
+    
+    return jsonify(ticket_data), 200
 
 # Cambiar estado de ticket (solo admin)
 @api.route('/ticket/<int:ticket_id>/status', methods=['PUT'])
@@ -178,11 +187,26 @@ def get_tickets():
     user = User.query.get(user_id)
     if not user:
         return jsonify({"msg": "Usuario no encontrado"}), 404
+    
     if user.role == 'admin':
         tickets = Ticket.query.all()
     else:
         tickets = Ticket.query.filter_by(user_id=user_id).all()
-    return jsonify([t.serialize() for t in tickets]), 200
+    
+    # Incluir información del usuario que creó cada ticket
+    tickets_with_user = []
+    for ticket in tickets:
+        ticket_data = ticket.serialize()
+        creator = User.query.get(ticket.user_id)
+        if creator:
+            ticket_data['creator_username'] = creator.username
+            ticket_data['creator_email'] = creator.email
+        else:
+            ticket_data['creator_username'] = 'Usuario eliminado'
+            ticket_data['creator_email'] = 'N/A'
+        tickets_with_user.append(ticket_data)
+    
+    return jsonify(tickets_with_user), 200
 
 # Crear usuario (solo admin)
 
@@ -196,8 +220,7 @@ def admin_create_user():
         return jsonify({"msg": "Solo el admin puede crear usuarios"}), 403
     if not data.get('username') or not data.get('email') or not data.get('password'):
         return jsonify({"msg": "Faltan datos (username, email, password)"}), 400
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({"msg": "El email ya existe"}), 400
+    # Solo verificar que el username sea único, no el email
     if User.query.filter_by(username=data['username']).first():
         return jsonify({"msg": "El nombre de usuario ya existe"}), 400
     user = User(username=data['username'], email=data['email'], password=data['password'],

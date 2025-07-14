@@ -409,11 +409,11 @@ const router = {
             <footer class="bg-dark text-white py-4 mt-auto">
                 <div class="container">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <h5><i class="fas fa-ticket-alt me-2"></i>Sistema de Tickets</h5>
                             <p class="mb-0">Plataforma completa para gestión de soporte técnico y atención al cliente.</p>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <h6>Enlaces Rápidos</h6>
                             <ul class="list-unstyled">
                                 <li><a href="/" class="text-light" onclick="router.navigate('/')">Inicio</a></li>
@@ -423,20 +423,20 @@ const router = {
                                 ` : ''}
                             </ul>
                         </div>
-                        <div class="col-md-3">
-                            <h6>Contacto</h6>
-                            <p class="mb-1"><i class="fas fa-envelope me-2"></i>soporte@tickets.com</p>
-                            <p class="mb-1"><i class="fas fa-phone me-2"></i>+1 (555) 123-4567</p>
-                            <p class="mb-0"><i class="fas fa-clock me-2"></i>24/7 Disponible</p>
+                        <div class="col-md-4">
+                            <h6>Desarrollador</h6>
+                            <p class="mb-1"><i class="fas fa-heart text-danger me-2"></i>Hecho con amor por <strong>Levi</strong></p>
+                            <p class="mb-1"><i class="fas fa-phone me-2"></i>+52 442 105 6597</p>
+                            <p class="mb-0"><i class="fas fa-envelope me-2"></i>sistemas@sancosmeorg.com</p>
                         </div>
                     </div>
                     <hr class="my-3">
                     <div class="row align-items-center">
                         <div class="col-md-6">
-                            <p class="mb-0">&copy; 2025 Sistema de Tickets. Todos los derechos reservados.</p>
+                            <p class="mb-0">&copy; 2025 Sistema de Tickets. Desarrollado por Levi.</p>
                         </div>
                         <div class="col-md-6 text-md-end">
-                            <small class="text-muted">Versión 1.0.0 | Desarrollado con Flask & Bootstrap</small>
+                            <small class="text-muted">Versión 1.0.0 | Flask + Bootstrap + ❤️</small>
                         </div>
                     </div>
                 </div>
@@ -593,7 +593,15 @@ async function loadAdminTickets() {
                                     <td><span class="badge bg-${getPriorityColor(ticket.priority)}">${getPriorityText(ticket.priority)}</span></td>
                                     <td><span class="badge bg-${getStatusColor(ticket.status)}">${getStatusText(ticket.status)}</span></td>
                                     <td><span class="badge bg-info">${getCategoryText(ticket.category)}</span></td>
-                                    <td><span class="badge bg-secondary">ID: ${ticket.user_id}</span></td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user-circle text-primary me-2"></i>
+                                            <div>
+                                                <strong>${ticket.creator_username}</strong><br>
+                                                <small class="text-muted">${ticket.creator_email}</small>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td><small>${formatDate(ticket.created_at)}</small></td>
                                     <td><small>${formatDate(ticket.updated_at)}</small></td>
                                     <td>
@@ -1302,6 +1310,22 @@ async function viewTicket(ticketId) {
                                     <div class="col-md-6">
                                         <h6>Categoría:</h6>
                                         <span class="badge bg-info">${getCategoryText(data.category)}</span>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <h6>Creado por:</h6>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user-circle text-primary me-2"></i>
+                                            <div>
+                                                <strong>${data.creator_username}</strong><br>
+                                                <small class="text-muted">${data.creator_email}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>ID del Ticket:</h6>
+                                        <span class="badge bg-primary">#${data.id}</span>
                                     </div>
                                 </div>
                                 <div class="row mt-3">
