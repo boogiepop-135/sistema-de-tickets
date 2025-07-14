@@ -323,88 +323,100 @@ def create_test_users():
 @api.route('/init-database', methods=['POST'])
 def init_database():
     try:
-        # Forzar creación de todas las tablas
+        # Eliminar todas las tablas existentes para evitar conflictos de esquema
+        db.drop_all()
+        
+        # Crear todas las tablas con el nuevo esquema
         db.create_all()
         
         # Crear usuario admin de prueba
-        admin_user = User.query.filter_by(username='admin').first()
-        if not admin_user:
-            admin_user = User(
-                username='admin',
-                email='admin@test.com',
-                password='admin123',
-                is_active=True,
-                role='admin'
-            )
-            db.session.add(admin_user)
+        admin_user = User(
+            username='admin',
+            email='admin@test.com',
+            password='admin123',
+            is_active=True,
+            role='admin'
+        )
+        db.session.add(admin_user)
         
         # Crear usuario normal de prueba
-        normal_user = User.query.filter_by(username='user').first()
-        if not normal_user:
-            normal_user = User(
-                username='user',
-                email='user@test.com',
-                password='user123',
-                is_active=True,
-                role='user'
-            )
-            db.session.add(normal_user)
+        normal_user = User(
+            username='user',
+            email='user@test.com',
+            password='user123',
+            is_active=True,
+            role='user'
+        )
+        db.session.add(normal_user)
         
         # Crear tu usuario específico
-        levi_user = User.query.filter_by(username='Levi').first()
-        if not levi_user:
-            levi_user = User(
-                username='Levi',
-                email='levi@test.com',
-                password='Leaguejinx1310-',
-                is_active=True,
-                role='admin'
-            )
-            db.session.add(levi_user)
+        levi_user = User(
+            username='Levi',
+            email='levi@test.com',
+            password='Leaguejinx1310-',
+            is_active=True,
+            role='admin'
+        )
+        db.session.add(levi_user)
+        
+        # Commit usuarios primero
+        db.session.commit()
         
         # Crear algunos tickets de ejemplo
         from datetime import datetime
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         # Ticket de ejemplo 1
-        if not Ticket.query.filter_by(title='Ticket de prueba 1').first():
-            sample_ticket1 = Ticket(
-                title='Ticket de prueba 1',
-                description='Este es un ticket de ejemplo para probar el sistema',
-                status='open',
-                priority='medium',
-                category='general',
-                created_at=current_time,
-                updated_at=current_time,
-                user_id=1
-            )
-            db.session.add(sample_ticket1)
+        sample_ticket1 = Ticket(
+            title='Ticket de prueba 1',
+            description='Este es un ticket de ejemplo para probar el sistema',
+            status='open',
+            priority='medium',
+            category='general',
+            created_at=current_time,
+            updated_at=current_time,
+            user_id=1
+        )
+        db.session.add(sample_ticket1)
         
         # Ticket de ejemplo 2
-        if not Ticket.query.filter_by(title='Problema técnico').first():
-            sample_ticket2 = Ticket(
-                title='Problema técnico',
-                description='Error en el sistema que necesita atención urgente',
-                status='pending',
-                priority='high',
-                category='technical',
-                created_at=current_time,
-                updated_at=current_time,
-                user_id=2
-            )
-            db.session.add(sample_ticket2)
+        sample_ticket2 = Ticket(
+            title='Problema técnico',
+            description='Error en el sistema que necesita atención urgente',
+            status='pending',
+            priority='high',
+            category='technical',
+            created_at=current_time,
+            updated_at=current_time,
+            user_id=2
+        )
+        db.session.add(sample_ticket2)
         
+        # Ticket de ejemplo 3
+        sample_ticket3 = Ticket(
+            title='Consulta de facturación',
+            description='Pregunta sobre la facturación del servicio',
+            status='closed',
+            priority='low',
+            category='billing',
+            created_at=current_time,
+            updated_at=current_time,
+            user_id=3
+        )
+        db.session.add(sample_ticket3)
+        
+        # Commit tickets
         db.session.commit()
         
         return jsonify({
             "msg": "Base de datos inicializada correctamente",
-            "tables_created": True,
+            "tables_dropped_and_recreated": True,
             "users_created": [
                 {"username": "admin", "password": "admin123", "role": "admin"},
                 {"username": "user", "password": "user123", "role": "user"},
                 {"username": "Levi", "password": "Leaguejinx1310-", "role": "admin"}
             ],
-            "sample_tickets_created": 2
+            "sample_tickets_created": 3
         }), 201
         
     except Exception as e:
