@@ -235,13 +235,35 @@ const router = {
                                     </div>
                                     <div class="card-body p-4">
                                         <form id="ticketForm">
-                                            <div class="mb-3">
-                                                <label for="title" class="form-label">Título</label>
-                                                <input type="text" class="form-control" id="title" required>
+                                            <div class="row">
+                                                <div class="col-md-12 mb-3">
+                                                    <label for="title" class="form-label">Título *</label>
+                                                    <input type="text" class="form-control" id="title" required>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="priority" class="form-label">Prioridad</label>
+                                                    <select class="form-select" id="priority">
+                                                        <option value="low">Baja</option>
+                                                        <option value="medium" selected>Media</option>
+                                                        <option value="high">Alta</option>
+                                                        <option value="urgent">Urgente</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="category" class="form-label">Categoría</label>
+                                                    <select class="form-select" id="category">
+                                                        <option value="general" selected>General</option>
+                                                        <option value="technical">Técnico</option>
+                                                        <option value="billing">Facturación</option>
+                                                        <option value="other">Otro</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div class="mb-3">
-                                                <label for="description" class="form-label">Descripción</label>
-                                                <textarea class="form-control" id="description" rows="4" required></textarea>
+                                                <label for="description" class="form-label">Descripción *</label>
+                                                <textarea class="form-control" id="description" rows="4" required placeholder="Describe tu problema o solicitud detalladamente..."></textarea>
                                             </div>
                                             <div class="d-flex gap-2">
                                                 <button type="submit" class="btn btn-primary">
@@ -261,6 +283,7 @@ const router = {
                         </div>
                     </div>
                 </div>
+                ${this.renderFooter()}
             </div>
         `;
         
@@ -432,6 +455,8 @@ async function handleCreateTicket(e) {
     
     const title = document.getElementById('title').value;
     const description = document.getElementById('description').value;
+    const priority = document.getElementById('priority').value;
+    const category = document.getElementById('category').value;
     const messageDiv = document.getElementById('ticketMessage');
     
     try {
@@ -440,6 +465,8 @@ async function handleCreateTicket(e) {
             body: JSON.stringify({
                 title,
                 description,
+                priority,
+                category,
                 user_id: window.currentUser.id
             })
         });
@@ -457,7 +484,7 @@ async function handleCreateTicket(e) {
     }
 }
 
-// Cargar tickets del admin
+// Cargar tickets del admin con funcionalidades completas
 async function loadAdminTickets() {
     try {
         const response = await fetchAPI(`/api/tickets?user_id=${window.currentUser.id}`);
@@ -467,33 +494,141 @@ async function loadAdminTickets() {
         
         if (response.ok && data.length > 0) {
             container.innerHTML = `
+                <div class="d-flex justify-content-between mb-3">
+                    <h5>Total de Tickets: ${data.length}</h5>
+                    <button class="btn btn-success" onclick="exportTickets()">
+                        <i class="fas fa-file-excel me-1"></i> Exportar a Excel
+                    </button>
+                </div>
+                
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-select" id="statusFilter" onchange="filterTickets()">
+                            <option value="">Todos los estados</option>
+                            <option value="open">Abierto</option>
+                            <option value="pending">Pendiente</option>
+                            <option value="in_progress">En Progreso</option>
+                            <option value="closed">Cerrado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="priorityFilter" onchange="filterTickets()">
+                            <option value="">Todas las prioridades</option>
+                            <option value="low">Baja</option>
+                            <option value="medium">Media</option>
+                            <option value="high">Alta</option>
+                            <option value="urgent">Urgente</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="searchTickets" placeholder="Buscar tickets..." onkeyup="filterTickets()">
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover" id="ticketsTable">
+                        <thead class="table-dark">
                             <tr>
                                 <th>ID</th>
                                 <th>Título</th>
-                                <th>Descripción</th>
+                                <th>Prioridad</th>
                                 <th>Estado</th>
+                                <th>Categoría</th>
                                 <th>Usuario</th>
+                                <th>Creado</th>
+                                <th>Actualizado</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${data.map(ticket => `
-                                <tr>
+                                <tr data-ticket-id="${ticket.id}" data-status="${ticket.status}" data-priority="${ticket.priority}">
                                     <td><span class="badge bg-primary">#${ticket.id}</span></td>
-                                    <td><strong>${ticket.title}</strong></td>
-                                    <td>${ticket.description}</td>
-                                    <td><span class="badge bg-success">${ticket.status || 'Abierto'}</span></td>
+                                    <td>
+                                        <strong>${ticket.title}</strong><br>
+                                        <small class="text-muted">${ticket.description.substring(0, 50)}${ticket.description.length > 50 ? '...' : ''}</small>
+                                    </td>
+                                    <td><span class="badge bg-${getPriorityColor(ticket.priority)}">${getPriorityText(ticket.priority)}</span></td>
+                                    <td><span class="badge bg-${getStatusColor(ticket.status)}">${getStatusText(ticket.status)}</span></td>
+                                    <td><span class="badge bg-info">${getCategoryText(ticket.category)}</span></td>
                                     <td><span class="badge bg-secondary">ID: ${ticket.user_id}</span></td>
+                                    <td><small>${formatDate(ticket.created_at)}</small></td>
+                                    <td><small>${formatDate(ticket.updated_at)}</small></td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="viewTicket(${ticket.id})" title="Ver detalles">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-warning" onclick="editTicket(${ticket.id})" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" title="Cambiar estado">
+                                                    <i class="fas fa-tasks"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" onclick="changeTicketStatus(${ticket.id}, 'open')">Abierto</a></li>
+                                                    <li><a class="dropdown-item" onclick="changeTicketStatus(${ticket.id}, 'pending')">Pendiente</a></li>
+                                                    <li><a class="dropdown-item" onclick="changeTicketStatus(${ticket.id}, 'in_progress')">En Progreso</a></li>
+                                                    <li><a class="dropdown-item" onclick="changeTicketStatus(${ticket.id}, 'closed')">Cerrado</a></li>
+                                                </ul>
+                                            </div>
+                                            <button class="btn btn-outline-danger" onclick="deleteTicket(${ticket.id})" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Estadísticas -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5>${data.filter(t => t.status === 'open').length}</h5>
+                                <p class="mb-0">Abiertos</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <h5>${data.filter(t => t.status === 'pending').length}</h5>
+                                <p class="mb-0">Pendientes</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h5>${data.filter(t => t.status === 'in_progress').length}</h5>
+                                <p class="mb-0">En Progreso</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-secondary text-white">
+                            <div class="card-body">
+                                <h5>${data.filter(t => t.status === 'closed').length}</h5>
+                                <p class="mb-0">Cerrados</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
         } else {
-            container.innerHTML = '<div class="text-center p-4"><p>No hay tickets disponibles</p></div>';
+            container.innerHTML = `
+                <div class="text-center p-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5>No hay tickets disponibles</h5>
+                    <p class="text-muted">Los tickets aparecerán aquí cuando se creen</p>
+                </div>
+            `;
         }
     } catch (error) {
         document.getElementById('ticketsContainer').innerHTML = '<div class="alert alert-danger">Error al cargar tickets</div>';
@@ -611,3 +746,354 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log("Sistema de Tickets con Router cargado correctamente");
+
+// Funciones auxiliares para formatear datos
+function getPriorityColor(priority) {
+    const colors = {
+        'low': 'success',
+        'medium': 'warning',
+        'high': 'danger',
+        'urgent': 'dark'
+    };
+    return colors[priority] || 'secondary';
+}
+
+function getPriorityText(priority) {
+    const texts = {
+        'low': 'Baja',
+        'medium': 'Media',
+        'high': 'Alta',
+        'urgent': 'Urgente'
+    };
+    return texts[priority] || priority;
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'open': 'success',
+        'pending': 'warning',
+        'in_progress': 'info',
+        'closed': 'secondary'
+    };
+    return colors[status] || 'primary';
+}
+
+function getStatusText(status) {
+    const texts = {
+        'open': 'Abierto',
+        'pending': 'Pendiente',
+        'in_progress': 'En Progreso',
+        'closed': 'Cerrado'
+    };
+    return texts[status] || status;
+}
+
+function getCategoryText(category) {
+    const texts = {
+        'general': 'General',
+        'technical': 'Técnico',
+        'billing': 'Facturación',
+        'other': 'Otro'
+    };
+    return texts[category] || category;
+}
+
+function formatDate(dateString) {
+    if (!dateString || dateString === '2025-01-01 00:00:00') return 'N/A';
+    return new Date(dateString).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Funciones para manejar tickets
+async function viewTicket(ticketId) {
+    try {
+        const response = await fetchAPI(`/api/ticket/${ticketId}?user_id=${window.currentUser.id}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            const modalHtml = `
+                <div class="modal fade" id="ticketModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Ticket #${data.id}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Título:</h6>
+                                        <p>${data.title}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Estado:</h6>
+                                        <span class="badge bg-${getStatusColor(data.status)}">${getStatusText(data.status)}</span>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <h6>Prioridad:</h6>
+                                        <span class="badge bg-${getPriorityColor(data.priority)}">${getPriorityText(data.priority)}</span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Categoría:</h6>
+                                        <span class="badge bg-info">${getCategoryText(data.category)}</span>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <h6>Creado:</h6>
+                                        <p>${formatDate(data.created_at)}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Actualizado:</h6>
+                                        <p>${formatDate(data.updated_at)}</p>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <h6>Descripción:</h6>
+                                    <p>${data.description}</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById('ticketModal'));
+            modal.show();
+            
+            // Limpiar modal después de cerrarlo
+            document.getElementById('ticketModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error al cargar ticket');
+    }
+}
+
+async function editTicket(ticketId) {
+    try {
+        const response = await fetchAPI(`/api/ticket/${ticketId}?user_id=${window.currentUser.id}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            const modalHtml = `
+                <div class="modal fade" id="editTicketModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Editar Ticket #${data.id}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="editTicketForm">
+                                    <div class="mb-3">
+                                        <label for="editTitle" class="form-label">Título</label>
+                                        <input type="text" class="form-control" id="editTitle" value="${data.title}" required>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editPriority" class="form-label">Prioridad</label>
+                                            <select class="form-select" id="editPriority" ${window.currentUser.role !== 'admin' ? 'disabled' : ''}>
+                                                <option value="low" ${data.priority === 'low' ? 'selected' : ''}>Baja</option>
+                                                <option value="medium" ${data.priority === 'medium' ? 'selected' : ''}>Media</option>
+                                                <option value="high" ${data.priority === 'high' ? 'selected' : ''}>Alta</option>
+                                                <option value="urgent" ${data.priority === 'urgent' ? 'selected' : ''}>Urgente</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="editCategory" class="form-label">Categoría</label>
+                                            <select class="form-select" id="editCategory" ${window.currentUser.role !== 'admin' ? 'disabled' : ''}>
+                                                <option value="general" ${data.category === 'general' ? 'selected' : ''}>General</option>
+                                                <option value="technical" ${data.category === 'technical' ? 'selected' : ''}>Técnico</option>
+                                                <option value="billing" ${data.category === 'billing' ? 'selected' : ''}>Facturación</option>
+                                                <option value="other" ${data.category === 'other' ? 'selected' : ''}>Otro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    ${window.currentUser.role === 'admin' ? `
+                                        <div class="mb-3">
+                                            <label for="editStatus" class="form-label">Estado</label>
+                                            <select class="form-select" id="editStatus">
+                                                <option value="open" ${data.status === 'open' ? 'selected' : ''}>Abierto</option>
+                                                <option value="pending" ${data.status === 'pending' ? 'selected' : ''}>Pendiente</option>
+                                                <option value="in_progress" ${data.status === 'in_progress' ? 'selected' : ''}>En Progreso</option>
+                                                <option value="closed" ${data.status === 'closed' ? 'selected' : ''}>Cerrado</option>
+                                            </select>
+                                        </div>
+                                    ` : ''}
+                                    <div class="mb-3">
+                                        <label for="editDescription" class="form-label">Descripción</label>
+                                        <textarea class="form-control" id="editDescription" rows="4" required>${data.description}</textarea>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-primary" onclick="saveTicketEdit(${ticketId})">Guardar Cambios</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById('editTicketModal'));
+            modal.show();
+            
+            // Limpiar modal después de cerrarlo
+            document.getElementById('editTicketModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error al cargar ticket para editar');
+    }
+}
+
+async function saveTicketEdit(ticketId) {
+    const title = document.getElementById('editTitle').value;
+    const description = document.getElementById('editDescription').value;
+    const priority = document.getElementById('editPriority').value;
+    const category = document.getElementById('editCategory').value;
+    const status = document.getElementById('editStatus') ? document.getElementById('editStatus').value : undefined;
+    
+    try {
+        const body = {
+            title,
+            description,
+            priority,
+            category,
+            user_id: window.currentUser.id
+        };
+        
+        if (status) {
+            body.status = status;
+        }
+        
+        const response = await fetchAPI(`/api/ticket/${ticketId}`, {
+            method: 'PUT',
+            body: JSON.stringify(body)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Ticket actualizado exitosamente');
+            bootstrap.Modal.getInstance(document.getElementById('editTicketModal')).hide();
+            loadAdminTickets(); // Recargar la lista
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error al actualizar ticket');
+    }
+}
+
+async function changeTicketStatus(ticketId, newStatus) {
+    try {
+        const response = await fetchAPI(`/api/ticket/${ticketId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                status: newStatus,
+                admin_id: window.currentUser.id
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(`Estado cambiado a: ${getStatusText(newStatus)}`);
+            loadAdminTickets(); // Recargar la lista
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error al cambiar estado del ticket');
+    }
+}
+
+async function deleteTicket(ticketId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar este ticket?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetchAPI(`/api/ticket/${ticketId}?user_id=${window.currentUser.id}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Ticket eliminado exitosamente');
+            loadAdminTickets(); // Recargar la lista
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error al eliminar ticket');
+    }
+}
+
+async function exportTickets() {
+    try {
+        const response = await fetchAPI(`/api/admin/export_tickets?admin_id=${window.currentUser.id}`);
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tickets_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } else {
+            alert('Error al exportar tickets');
+        }
+    } catch (error) {
+        alert('Error al exportar tickets');
+    }
+}
+
+// Función para filtrar tickets
+function filterTickets() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const priorityFilter = document.getElementById('priorityFilter').value;
+    const searchText = document.getElementById('searchTickets').value.toLowerCase();
+    
+    const rows = document.querySelectorAll('#ticketsTable tbody tr');
+    
+    rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        const priority = row.getAttribute('data-priority');
+        const text = row.textContent.toLowerCase();
+        
+        const matchesStatus = !statusFilter || status === statusFilter;
+        const matchesPriority = !priorityFilter || priority === priorityFilter;
+        const matchesSearch = !searchText || text.includes(searchText);
+        
+        if (matchesStatus && matchesPriority && matchesSearch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}

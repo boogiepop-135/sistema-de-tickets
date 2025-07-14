@@ -57,11 +57,118 @@ def create_ticket():
     user = User.query.get(user_id)
     if not user:
         return jsonify({"msg": "Usuario no encontrado"}), 404
-    ticket = Ticket(title=data['title'],
-                    description=data['description'], user_id=user_id)
+    
+    from datetime import datetime
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    ticket = Ticket(
+        title=data['title'],
+        description=data['description'],
+        status=data.get('status', 'open'),
+        priority=data.get('priority', 'medium'),
+        category=data.get('category', 'general'),
+        created_at=current_time,
+        updated_at=current_time,
+        user_id=user_id
+    )
     db.session.add(ticket)
     db.session.commit()
     return jsonify(ticket.serialize()), 201
+
+# Editar ticket (admin puede cambiar estado, usuario solo titulo/descripcion)
+@api.route('/ticket/<int:ticket_id>', methods=['PUT'])
+def edit_ticket(ticket_id):
+    data = request.json
+    user_id = data.get('user_id')
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "Usuario no encontrado"}), 404
+    
+    ticket = Ticket.query.get(ticket_id)
+    if not ticket:
+        return jsonify({"msg": "Ticket no encontrado"}), 404
+    
+    # Solo el creador del ticket o admin puede editarlo
+    if ticket.user_id != user_id and user.role != 'admin':
+        return jsonify({"msg": "No tienes permisos para editar este ticket"}), 403
+    
+    from datetime import datetime
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Usuarios normales solo pueden editar titulo y descripcion
+    if user.role != 'admin':
+        ticket.title = data.get('title', ticket.title)
+        ticket.description = data.get('description', ticket.description)
+    else:
+        # Admin puede editar todo
+        ticket.title = data.get('title', ticket.title)
+        ticket.description = data.get('description', ticket.description)
+        ticket.status = data.get('status', ticket.status)
+        ticket.priority = data.get('priority', ticket.priority)
+        ticket.category = data.get('category', ticket.category)
+    
+    ticket.updated_at = current_time
+    db.session.commit()
+    return jsonify(ticket.serialize()), 200
+
+# Eliminar ticket (solo admin o creador)
+@api.route('/ticket/<int:ticket_id>', methods=['DELETE'])
+def delete_ticket(ticket_id):
+    user_id = request.args.get('user_id')
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "Usuario no encontrado"}), 404
+    
+    ticket = Ticket.query.get(ticket_id)
+    if not ticket:
+        return jsonify({"msg": "Ticket no encontrado"}), 404
+    
+    # Solo el creador del ticket o admin puede eliminarlo
+    if ticket.user_id != int(user_id) and user.role != 'admin':
+        return jsonify({"msg": "No tienes permisos para eliminar este ticket"}), 403
+    
+    db.session.delete(ticket)
+    db.session.commit()
+    return jsonify({"msg": "Ticket eliminado exitosamente"}), 200
+
+# Obtener un ticket específico
+@api.route('/ticket/<int:ticket_id>', methods=['GET'])
+def get_ticket(ticket_id):
+    user_id = request.args.get('user_id')
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "Usuario no encontrado"}), 404
+    
+    ticket = Ticket.query.get(ticket_id)
+    if not ticket:
+        return jsonify({"msg": "Ticket no encontrado"}), 404
+    
+    # Solo el creador del ticket o admin puede verlo
+    if ticket.user_id != int(user_id) and user.role != 'admin':
+        return jsonify({"msg": "No tienes permisos para ver este ticket"}), 403
+    
+    return jsonify(ticket.serialize()), 200
+
+# Cambiar estado de ticket (solo admin)
+@api.route('/ticket/<int:ticket_id>/status', methods=['PUT'])
+def change_ticket_status(ticket_id):
+    data = request.json
+    admin_id = data.get('admin_id')
+    admin = User.query.get(admin_id)
+    if not admin or admin.role != 'admin':
+        return jsonify({"msg": "Solo el admin puede cambiar el estado"}), 403
+    
+    ticket = Ticket.query.get(ticket_id)
+    if not ticket:
+        return jsonify({"msg": "Ticket no encontrado"}), 404
+    
+    from datetime import datetime
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    ticket.status = data.get('status', ticket.status)
+    ticket.updated_at = current_time
+    db.session.commit()
+    return jsonify(ticket.serialize()), 200
 
 # Listar tickets (admin ve todos, usuario solo los suyos)
 

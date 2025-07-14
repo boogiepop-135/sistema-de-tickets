@@ -31,7 +31,15 @@ class Ticket(db.Model):
     title: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="open")  # open, closed, etc
+        String(20), nullable=False, default="open")  # open, pending, in_progress, closed
+    priority: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="medium")  # low, medium, high, urgent
+    category: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="general")  # general, technical, billing, other
+    created_at: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="2025-01-01 00:00:00")
+    updated_at: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="2025-01-01 00:00:00")
     user_id: Mapped[int] = mapped_column(
         db.ForeignKey('user.id'), nullable=False)
 
@@ -41,5 +49,9 @@ class Ticket(db.Model):
             "title": self.title,
             "description": self.description,
             "status": self.status,
+            "priority": self.priority,
+            "category": self.category,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
             "user_id": self.user_id
         }
