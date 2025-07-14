@@ -81,7 +81,7 @@ def create_ticket():
     db.session.commit()
     return jsonify(ticket.serialize()), 201
 
-# Editar ticket (admin puede cambiar estado, usuario solo titulo/descripcion)
+# Editar ticket (solo admin puede editar)
 @api.route('/ticket/<int:ticket_id>', methods=['PUT'])
 def edit_ticket(ticket_id):
     data = request.json
@@ -94,25 +94,20 @@ def edit_ticket(ticket_id):
     if not ticket:
         return jsonify({"msg": "Ticket no encontrado"}), 404
     
-    # Solo el creador del ticket o admin puede editarlo
-    if ticket.user_id != user_id and user.role != 'admin':
-        return jsonify({"msg": "No tienes permisos para editar este ticket"}), 403
+    # Solo administradores pueden editar tickets
+    if user.role != 'admin':
+        return jsonify({"msg": "Solo los administradores pueden editar tickets"}), 403
     
     current_time = get_mexico_time()
     
-    # Usuarios normales solo pueden editar titulo y descripcion
-    if user.role != 'admin':
-        ticket.title = data.get('title', ticket.title)
-        ticket.description = data.get('description', ticket.description)
-    else:
-        # Admin puede editar todo
-        ticket.title = data.get('title', ticket.title)
-        ticket.description = data.get('description', ticket.description)
-        ticket.status = data.get('status', ticket.status)
-        ticket.priority = data.get('priority', ticket.priority)
-        ticket.category = data.get('category', ticket.category)
-    
+    # Admin puede editar todo
+    ticket.title = data.get('title', ticket.title)
+    ticket.description = data.get('description', ticket.description)
+    ticket.status = data.get('status', ticket.status)
+    ticket.priority = data.get('priority', ticket.priority)
+    ticket.category = data.get('category', ticket.category)
     ticket.updated_at = current_time
+    
     db.session.commit()
     return jsonify(ticket.serialize()), 200
 

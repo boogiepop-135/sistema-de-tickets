@@ -1620,11 +1620,7 @@ async function loadMyTickets() {
                                             <button class="btn btn-outline-primary" onclick="viewTicket(${ticket.id})" title="Ver detalles">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            ${ticket.status !== 'closed' ? `
-                                                <button class="btn btn-outline-warning" onclick="editTicket(${ticket.id})" title="Editar">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            ` : ''}
+                                            <!-- Los usuarios normales solo pueden ver, no editar -->
                                         </div>
                                     </td>
                                 </tr>
