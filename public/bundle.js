@@ -117,13 +117,12 @@ const router = {
                                     `}
                                 </div>
                                 ${!window.currentUser ? `
-                                    <div class="alert alert-warning">
-                                        <strong>⚠️ PASO 1:</strong> Haz clic en "Inicializar Base de Datos" primero.<br>
-                                        <strong>📝 PASO 2:</strong> Luego usa las credenciales para iniciar sesión.<br><br>
-                                        <strong>Usuarios disponibles:</strong><br>
-                                        • admin / admin123 (administrador)<br>
-                                        • user / user123 (usuario)<br>
-                                        • Levi / Leaguejinx1310- (administrador)
+                                    <div class="alert alert-info">
+                                        <strong>🔐 SISTEMA SEGURO:</strong><br>
+                                        <strong>PASO 1:</strong> Haz clic en "Inicializar Base de Datos" para crear las tablas.<br>
+                                        <strong>PASO 2:</strong> Usa tu cuenta de administrador para iniciar sesión.<br>
+                                        <strong>PASO 3:</strong> Crea nuevos usuarios desde el panel de administración.<br><br>
+                                        <small class="text-muted">Solo el administrador principal puede acceder al sistema inicialmente.</small>
                                     </div>
                                 ` : ''}
                             </div>
@@ -635,7 +634,7 @@ async function loadAdminTickets() {
     }
 }
 
-// Cargar usuarios del admin
+// Cargar usuarios del admin con funcionalidades completas
 async function loadAdminUsers() {
     try {
         const response = await fetchAPI(`/api/admin/users?admin_id=${window.currentUser.id}`);
@@ -645,14 +644,23 @@ async function loadAdminUsers() {
         
         if (response.ok && data.length > 0) {
             container.innerHTML = `
+                <div class="d-flex justify-content-between mb-3">
+                    <h5>Total de Usuarios: ${data.length}</h5>
+                    <button class="btn btn-primary" onclick="showCreateUserModal()">
+                        <i class="fas fa-plus me-1"></i> Crear Usuario
+                    </button>
+                </div>
+                
                 <div class="table-responsive">
                     <table class="table table-hover">
-                        <thead>
+                        <thead class="table-dark">
                             <tr>
                                 <th>ID</th>
                                 <th>Username</th>
                                 <th>Email</th>
                                 <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -662,6 +670,26 @@ async function loadAdminUsers() {
                                     <td><strong>${user.username}</strong></td>
                                     <td>${user.email}</td>
                                     <td><span class="badge bg-${user.role === 'admin' ? 'warning' : 'secondary'}">${user.role}</span></td>
+                                    <td><span class="badge bg-success">Activo</span></td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-warning" onclick="editUser(${user.id}, '${user.username}', '${user.email}', '${user.role}')" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info" onclick="changeUserPassword(${user.id}, '${user.username}')" title="Cambiar contraseña">
+                                                <i class="fas fa-key"></i>
+                                            </button>
+                                            ${user.username !== 'Levi' ? `
+                                                <button class="btn btn-outline-danger" onclick="deleteUser(${user.id}, '${user.username}')" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            ` : `
+                                                <button class="btn btn-outline-secondary" disabled title="No puedes eliminar tu propio usuario">
+                                                    <i class="fas fa-shield-alt"></i>
+                                                </button>
+                                            `}
+                                        </div>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -669,30 +697,298 @@ async function loadAdminUsers() {
                 </div>
             `;
         } else {
-            container.innerHTML = '<div class="text-center p-4"><p>No hay usuarios disponibles</p></div>';
+            container.innerHTML = `
+                <div class="text-center p-4">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5>No hay usuarios disponibles</h5>
+                    <button class="btn btn-primary" onclick="showCreateUserModal()">
+                        <i class="fas fa-plus me-1"></i> Crear Primer Usuario
+                    </button>
+                </div>
+            `;
         }
     } catch (error) {
         document.getElementById('usersContainer').innerHTML = '<div class="alert alert-danger">Error al cargar usuarios</div>';
     }
 }
 
-// Función para crear usuarios de prueba
-async function createTestUsers() {
+// Función para mostrar modal de crear usuario
+function showCreateUserModal() {
+    const modalHtml = `
+        <div class="modal fade" id="createUserModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Crear Nuevo Usuario</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createUserForm">
+                            <div class="mb-3">
+                                <label for="newUsername" class="form-label">Nombre de Usuario</label>
+                                <input type="text" class="form-control" id="newUsername" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="newEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="newEmail" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="newPassword" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="newPassword" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="newRole" class="form-label">Rol</label>
+                                <select class="form-select" id="newRole" required>
+                                    <option value="user">Usuario</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="createUser()">Crear Usuario</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
+    modal.show();
+    
+    // Limpiar modal después de cerrarlo
+    document.getElementById('createUserModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// Función para crear usuario
+async function createUser() {
+    const username = document.getElementById('newUsername').value;
+    const email = document.getElementById('newEmail').value;
+    const password = document.getElementById('newPassword').value;
+    const role = document.getElementById('newRole').value;
+    
     try {
-        const response = await fetchAPI('/api/create-test-users', {
-            method: 'POST'
+        const response = await fetchAPI('/api/admin/create_user', {
+            method: 'POST',
+            body: JSON.stringify({
+                username,
+                email,
+                password,
+                role,
+                admin_id: window.currentUser.id
+            })
         });
         
         const data = await response.json();
         
         if (response.ok) {
-            alert('Usuarios de prueba creados exitosamente!\n\nUsuarios disponibles:\n- admin / admin123 (admin)\n- user / user123 (user)\n- Levi / Leaguejinx1310- (admin)');
+            alert('Usuario creado exitosamente');
+            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+            loadAdminUsers(); // Recargar la lista
         } else {
             alert(`Error: ${data.msg}`);
         }
     } catch (error) {
-        alert('Error de conexión al crear usuarios');
+        alert('Error al crear usuario');
     }
+}
+
+// Función para editar usuario
+function editUser(userId, username, email, role) {
+    const modalHtml = `
+        <div class="modal fade" id="editUserModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Editar Usuario: ${username}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editUserForm">
+                            <div class="mb-3">
+                                <label for="editUsername" class="form-label">Nombre de Usuario</label>
+                                <input type="text" class="form-control" id="editUsername" value="${username}" ${username === 'Levi' ? 'readonly' : ''}>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="editEmail" value="${email}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editRole" class="form-label">Rol</label>
+                                <select class="form-select" id="editRole" required ${username === 'Levi' ? 'disabled' : ''}>
+                                    <option value="user" ${role === 'user' ? 'selected' : ''}>Usuario</option>
+                                    <option value="admin" ${role === 'admin' ? 'selected' : ''}>Administrador</option>
+                                </select>
+                            </div>
+                            ${username === 'Levi' ? '<div class="alert alert-info">No puedes cambiar tu propio rol o username por seguridad</div>' : ''}
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="saveUserEdit(${userId})">Guardar Cambios</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+    modal.show();
+    
+    // Limpiar modal después de cerrarlo
+    document.getElementById('editUserModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// Función para guardar cambios de usuario
+async function saveUserEdit(userId) {
+    const username = document.getElementById('editUsername').value;
+    const email = document.getElementById('editEmail').value;
+    const role = document.getElementById('editRole').value;
+    
+    try {
+        const response = await fetchAPI(`/api/admin/edit_user/${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                username,
+                email,
+                role,
+                admin_id: window.currentUser.id
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Usuario actualizado exitosamente');
+            bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+            loadAdminUsers(); // Recargar la lista
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error al actualizar usuario');
+    }
+}
+
+// Función para cambiar contraseña
+function changeUserPassword(userId, username) {
+    const modalHtml = `
+        <div class="modal fade" id="changePasswordModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Cambiar Contraseña: ${username}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="changePasswordForm">
+                            <div class="mb-3">
+                                <label for="newPasswordChange" class="form-label">Nueva Contraseña</label>
+                                <input type="password" class="form-control" id="newPasswordChange" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">Confirmar Contraseña</label>
+                                <input type="password" class="form-control" id="confirmPassword" required>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="savePasswordChange(${userId})">Cambiar Contraseña</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+    modal.show();
+    
+    // Limpiar modal después de cerrarlo
+    document.getElementById('changePasswordModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// Función para guardar cambio de contraseña
+async function savePasswordChange(userId) {
+    const newPassword = document.getElementById('newPasswordChange').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (newPassword !== confirmPassword) {
+        alert('Las contraseñas no coinciden');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        alert('La contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+    
+    try {
+        const response = await fetchAPI(`/api/admin/edit_user/${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                password: newPassword,
+                admin_id: window.currentUser.id
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Contraseña cambiada exitosamente');
+            bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+            loadAdminUsers(); // Recargar la lista
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error al cambiar contraseña');
+    }
+}
+
+// Función para eliminar usuario
+async function deleteUser(userId, username) {
+    if (username === 'Levi') {
+        alert('No puedes eliminar tu propio usuario');
+        return;
+    }
+    
+    if (!confirm(`¿Estás seguro de que quieres eliminar al usuario "${username}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetchAPI(`/api/admin/delete_user/${userId}?admin_id=${window.currentUser.id}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Usuario eliminado exitosamente');
+            loadAdminUsers(); // Recargar la lista
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error al eliminar usuario');
+    }
+}
+
+// Logout
+function logout() {
+    window.currentUser = null;
+    router.navigate('/');
 }
 
 // Función para inicializar la base de datos
@@ -705,7 +1001,7 @@ async function initDatabase() {
         const data = await response.json();
         
         if (response.ok) {
-            alert('Base de datos inicializada correctamente!\n\nTablas creadas y usuarios disponibles:\n- admin / admin123 (admin)\n- user / user123 (user)\n- Levi / Leaguejinx1310- (admin)');
+            alert('Base de datos inicializada correctamente!\n\nUsuario administrador creado:\n- Levi / Leaguejinx1310- (admin)\n\nYa puedes iniciar sesión y crear más usuarios desde el panel de administración.');
             return true;
         } else {
             alert(`Error: ${data.msg}`);
@@ -715,12 +1011,6 @@ async function initDatabase() {
         alert('Error de conexión al inicializar base de datos');
         return false;
     }
-}
-
-// Logout
-function logout() {
-    window.currentUser = null;
-    router.navigate('/');
 }
 
 // Inicializar cuando el DOM esté listo

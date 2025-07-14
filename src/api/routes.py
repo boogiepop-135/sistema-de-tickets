@@ -265,60 +265,6 @@ def admin_list_users():
     users = User.query.all()
     return jsonify([u.serialize() for u in users]), 200
 
-# Ruta para crear usuarios de prueba (temporal)
-@api.route('/create-test-users', methods=['POST'])
-def create_test_users():
-    try:
-        # Crear usuario admin de prueba
-        admin_user = User.query.filter_by(username='admin').first()
-        if not admin_user:
-            admin_user = User(
-                username='admin',
-                email='admin@test.com',
-                password='admin123',
-                is_active=True,
-                role='admin'
-            )
-            db.session.add(admin_user)
-        
-        # Crear usuario normal de prueba
-        normal_user = User.query.filter_by(username='user').first()
-        if not normal_user:
-            normal_user = User(
-                username='user',
-                email='user@test.com',
-                password='user123',
-                is_active=True,
-                role='user'
-            )
-            db.session.add(normal_user)
-        
-        # Crear tu usuario específico
-        levi_user = User.query.filter_by(username='Levi').first()
-        if not levi_user:
-            levi_user = User(
-                username='Levi',
-                email='levi@test.com',
-                password='Leaguejinx1310-',
-                is_active=True,
-                role='admin'
-            )
-            db.session.add(levi_user)
-        
-        db.session.commit()
-        
-        return jsonify({
-            "msg": "Usuarios de prueba creados exitosamente",
-            "users": [
-                {"username": "admin", "password": "admin123", "role": "admin"},
-                {"username": "user", "password": "user123", "role": "user"},
-                {"username": "Levi", "password": "Leaguejinx1310-", "role": "admin"}
-            ]
-        }), 201
-        
-    except Exception as e:
-        return jsonify({"msg": f"Error creando usuarios: {str(e)}"}), 500
-
 # Ruta para inicializar la base de datos (temporal para resolver el problema)
 @api.route('/init-database', methods=['POST'])
 def init_database():
@@ -329,94 +275,28 @@ def init_database():
         # Crear todas las tablas con el nuevo esquema
         db.create_all()
         
-        # Crear usuario admin de prueba
-        admin_user = User(
-            username='admin',
-            email='admin@test.com',
-            password='admin123',
-            is_active=True,
-            role='admin'
-        )
-        db.session.add(admin_user)
-        
-        # Crear usuario normal de prueba
-        normal_user = User(
-            username='user',
-            email='user@test.com',
-            password='user123',
-            is_active=True,
-            role='user'
-        )
-        db.session.add(normal_user)
-        
-        # Crear tu usuario específico
+        # Crear SOLO tu usuario como administrador principal
         levi_user = User(
             username='Levi',
-            email='levi@test.com',
+            email='levi@admin.com',
             password='Leaguejinx1310-',
             is_active=True,
             role='admin'
         )
         db.session.add(levi_user)
         
-        # Commit usuarios primero
-        db.session.commit()
-        
-        # Crear algunos tickets de ejemplo
-        from datetime import datetime
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        # Ticket de ejemplo 1
-        sample_ticket1 = Ticket(
-            title='Ticket de prueba 1',
-            description='Este es un ticket de ejemplo para probar el sistema',
-            status='open',
-            priority='medium',
-            category='general',
-            created_at=current_time,
-            updated_at=current_time,
-            user_id=1
-        )
-        db.session.add(sample_ticket1)
-        
-        # Ticket de ejemplo 2
-        sample_ticket2 = Ticket(
-            title='Problema técnico',
-            description='Error en el sistema que necesita atención urgente',
-            status='pending',
-            priority='high',
-            category='technical',
-            created_at=current_time,
-            updated_at=current_time,
-            user_id=2
-        )
-        db.session.add(sample_ticket2)
-        
-        # Ticket de ejemplo 3
-        sample_ticket3 = Ticket(
-            title='Consulta de facturación',
-            description='Pregunta sobre la facturación del servicio',
-            status='closed',
-            priority='low',
-            category='billing',
-            created_at=current_time,
-            updated_at=current_time,
-            user_id=3
-        )
-        db.session.add(sample_ticket3)
-        
-        # Commit tickets
+        # Commit usuario
         db.session.commit()
         
         return jsonify({
             "msg": "Base de datos inicializada correctamente",
             "tables_dropped_and_recreated": True,
-            "users_created": [
-                {"username": "admin", "password": "admin123", "role": "admin"},
-                {"username": "user", "password": "user123", "role": "user"},
-                {"username": "Levi", "password": "Leaguejinx1310-", "role": "admin"}
-            ],
-            "sample_tickets_created": 3
+            "admin_user_created": {
+                "username": "Levi",
+                "email": "levi@admin.com",
+                "role": "admin"
+            },
+            "note": "Solo el usuario administrador principal ha sido creado por seguridad"
         }), 201
         
     except Exception as e:
