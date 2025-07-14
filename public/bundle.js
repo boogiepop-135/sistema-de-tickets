@@ -33,6 +33,9 @@ const router = {
             case '/create-ticket':
                 this.renderCreateTicket();
                 break;
+            case '/my-tickets':
+                this.renderMyTickets();
+                break;
             case '/admin-tickets':
                 this.renderAdminTickets();
                 break;
@@ -61,7 +64,9 @@ const router = {
                             ${window.currentUser.role === 'admin' ? `
                                 <a href="/admin-tickets" class="nav-link me-2" onclick="router.navigate('/admin-tickets')">Admin Tickets</a>
                                 <a href="/admin-users" class="nav-link me-2" onclick="router.navigate('/admin-users')">Admin Usuarios</a>
-                            ` : ''}
+                            ` : `
+                                <a href="/my-tickets" class="nav-link me-2" onclick="router.navigate('/my-tickets')">Mis Tickets</a>
+                            `}
                             <a href="/create-ticket" class="nav-link me-2" onclick="router.navigate('/create-ticket')">Crear Ticket</a>
                             <button class="btn btn-outline-light btn-sm" onclick="logout()">
                                 <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
@@ -362,6 +367,43 @@ const router = {
         loadAdminUsers();
     },
     
+    renderMyTickets() {
+        if (!window.currentUser) {
+            this.navigate('/login');
+            return;
+        }
+        
+        document.getElementById('app').innerHTML = `
+            <div class="h-100">
+                ${this.renderNavbar()}
+                <div style="min-height: 80vh; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding-top: 2rem;">
+                    <div class="container">
+                        <div class="card shadow-lg border-0">
+                            <div class="card-header bg-info text-white">
+                                <h4 class="mb-0">
+                                    <i class="fas fa-clipboard-list me-2"></i>
+                                    Mis Tickets
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <div id="myTicketsContainer">
+                                    <div class="text-center p-4">
+                                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                                        <p>Cargando mis tickets...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ${this.renderFooter()}
+            </div>
+        `;
+        
+        // Cargar tickets del usuario
+        loadMyTickets();
+    },
+    
     renderFooter() {
         return `
             <footer class="bg-dark text-white py-4 mt-auto">
@@ -634,7 +676,7 @@ async function loadAdminTickets() {
     }
 }
 
-// Cargar usuarios del admin con funcionalidades completas
+// Cargar usuarios del admin with funcionalidades completas
 async function loadAdminUsers() {
     try {
         const response = await fetchAPI(`/api/admin/users?admin_id=${window.currentUser.id}`);
@@ -1482,6 +1524,175 @@ function filterTickets() {
     const searchText = document.getElementById('searchTickets').value.toLowerCase();
     
     const rows = document.querySelectorAll('#ticketsTable tbody tr');
+    
+    rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        const priority = row.getAttribute('data-priority');
+        const text = row.textContent.toLowerCase();
+        
+        const matchesStatus = !statusFilter || status === statusFilter;
+        const matchesPriority = !priorityFilter || priority === priorityFilter;
+        const matchesSearch = !searchText || text.includes(searchText);
+        
+        if (matchesStatus && matchesPriority && matchesSearch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Cargar tickets del usuario
+async function loadMyTickets() {
+    try {
+        const response = await fetchAPI(`/api/tickets?user_id=${window.currentUser.id}`);
+        const data = await response.json();
+        
+        const container = document.getElementById('myTicketsContainer');
+        
+        if (response.ok && data.length > 0) {
+            container.innerHTML = `
+                <div class="d-flex justify-content-between mb-3">
+                    <h5>Total de Mis Tickets: ${data.length}</h5>
+                    <button class="btn btn-primary" onclick="router.navigate('/create-ticket')">
+                        <i class="fas fa-plus me-1"></i> Crear Nuevo Ticket
+                    </button>
+                </div>
+                
+                <!-- Filtros para usuario -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <select class="form-select" id="myStatusFilter" onchange="filterMyTickets()">
+                            <option value="">Todos los estados</option>
+                            <option value="open">Abierto</option>
+                            <option value="pending">Pendiente</option>
+                            <option value="in_progress">En Progreso</option>
+                            <option value="closed">Cerrado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select" id="myPriorityFilter" onchange="filterMyTickets()">
+                            <option value="">Todas las prioridades</option>
+                            <option value="low">Baja</option>
+                            <option value="medium">Media</option>
+                            <option value="high">Alta</option>
+                            <option value="urgent">Urgente</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="searchMyTickets" placeholder="Buscar mis tickets..." onkeyup="filterMyTickets()">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover" id="myTicketsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Título</th>
+                                <th>Prioridad</th>
+                                <th>Estado</th>
+                                <th>Categoría</th>
+                                <th>Creado</th>
+                                <th>Actualizado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(ticket => `
+                                <tr data-ticket-id="${ticket.id}" data-status="${ticket.status}" data-priority="${ticket.priority}">
+                                    <td><span class="badge bg-primary">#${ticket.id}</span></td>
+                                    <td>
+                                        <strong>${ticket.title}</strong><br>
+                                        <small class="text-muted">${ticket.description.substring(0, 50)}${ticket.description.length > 50 ? '...' : ''}</small>
+                                    </td>
+                                    <td><span class="badge bg-${getPriorityColor(ticket.priority)}">${getPriorityText(ticket.priority)}</span></td>
+                                    <td>
+                                        <span class="badge bg-${getStatusColor(ticket.status)}">${getStatusText(ticket.status)}</span>
+                                        ${ticket.status === 'closed' ? '<i class="fas fa-check-circle text-success ms-1" title="Resuelto"></i>' : ''}
+                                        ${ticket.status === 'in_progress' ? '<i class="fas fa-spinner fa-pulse text-info ms-1" title="En proceso"></i>' : ''}
+                                    </td>
+                                    <td><span class="badge bg-info">${getCategoryText(ticket.category)}</span></td>
+                                    <td><small>${formatDate(ticket.created_at)}</small></td>
+                                    <td><small>${formatDate(ticket.updated_at)}</small></td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="viewTicket(${ticket.id})" title="Ver detalles">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            ${ticket.status !== 'closed' ? `
+                                                <button class="btn btn-outline-warning" onclick="editTicket(${ticket.id})" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Estadísticas del usuario -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5>${data.filter(t => t.status === 'open').length}</h5>
+                                <p class="mb-0">Abiertos</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <h5>${data.filter(t => t.status === 'pending').length}</h5>
+                                <p class="mb-0">Pendientes</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h5>${data.filter(t => t.status === 'in_progress').length}</h5>
+                                <p class="mb-0">En Progreso</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-secondary text-white">
+                            <div class="card-body">
+                                <h5>${data.filter(t => t.status === 'closed').length}</h5>
+                                <p class="mb-0">Cerrados</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="text-center p-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5>No tienes tickets creados</h5>
+                    <p class="text-muted">Los tickets que crees aparecerán aquí para que puedas ver su estado</p>
+                    <button class="btn btn-primary" onclick="router.navigate('/create-ticket')">
+                        <i class="fas fa-plus me-1"></i> Crear Mi Primer Ticket
+                    </button>
+                </div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('myTicketsContainer').innerHTML = '<div class="alert alert-danger">Error al cargar tus tickets</div>';
+    }
+}
+
+// Función para filtrar tickets del usuario
+function filterMyTickets() {
+    const statusFilter = document.getElementById('myStatusFilter').value;
+    const priorityFilter = document.getElementById('myPriorityFilter').value;
+    const searchText = document.getElementById('searchMyTickets').value.toLowerCase();
+    
+    const rows = document.querySelectorAll('#myTicketsTable tbody tr');
     
     rows.forEach(row => {
         const status = row.getAttribute('data-status');

@@ -8,11 +8,18 @@ from flask_cors import CORS
 import io
 import pandas as pd
 from flask import send_file
+from datetime import datetime
+import pytz
 
 api = Blueprint('api', __name__)
 
 # Allow CORS requests to this API
 CORS(api)
+
+# Función para obtener la hora actual en México Central
+def get_mexico_time():
+    mexico_tz = pytz.timezone('America/Mexico_City')
+    return datetime.now(mexico_tz).strftime('%Y-%m-%d %H:%M:%S')
 
 
 # Registro de usuario
@@ -58,8 +65,7 @@ def create_ticket():
     if not user:
         return jsonify({"msg": "Usuario no encontrado"}), 404
     
-    from datetime import datetime
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_time = get_mexico_time()
     
     ticket = Ticket(
         title=data['title'],
@@ -92,8 +98,7 @@ def edit_ticket(ticket_id):
     if ticket.user_id != user_id and user.role != 'admin':
         return jsonify({"msg": "No tienes permisos para editar este ticket"}), 403
     
-    from datetime import datetime
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_time = get_mexico_time()
     
     # Usuarios normales solo pueden editar titulo y descripcion
     if user.role != 'admin':
@@ -162,8 +167,7 @@ def change_ticket_status(ticket_id):
     if not ticket:
         return jsonify({"msg": "Ticket no encontrado"}), 404
     
-    from datetime import datetime
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    current_time = get_mexico_time()
     
     ticket.status = data.get('status', ticket.status)
     ticket.updated_at = current_time
