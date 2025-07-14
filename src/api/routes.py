@@ -275,30 +275,50 @@ def init_database():
         # Crear todas las tablas con el nuevo esquema
         db.create_all()
         
-        # Crear SOLO tu usuario como administrador principal
-        levi_user = User(
-            username='Levi',
-            email='levi@admin.com',
-            password='Leaguejinx1310-',
-            is_active=True,
-            role='admin'
-        )
-        db.session.add(levi_user)
+        # NO crear usuarios por defecto por seguridad
+        # Los usuarios deben ser creados manualmente después de la inicialización
         
-        # Commit usuario
+        # Commit para confirmar la creación de tablas
         db.session.commit()
         
         return jsonify({
             "msg": "Base de datos inicializada correctamente",
             "tables_dropped_and_recreated": True,
-            "admin_user_created": {
-                "username": "Levi",
-                "email": "levi@admin.com",
-                "role": "admin"
-            },
-            "note": "Solo el usuario administrador principal ha sido creado por seguridad"
+            "note": "No se han creado usuarios por defecto. Use el endpoint /create-admin para crear el primer administrador."
         }), 201
         
     except Exception as e:
         db.session.rollback()
         return jsonify({"msg": f"Error inicializando base de datos: {str(e)}"}), 500
+
+# Ruta para crear el primer usuario administrador (solo funciona si no hay usuarios)
+@api.route('/create-admin', methods=['POST'])
+def create_admin():
+    try:
+        # Verificar que no existan usuarios en la base de datos
+        if User.query.count() > 0:
+            return jsonify({"msg": "Ya existen usuarios en el sistema. No se puede crear un nuevo administrador."}), 400
+        
+        data = request.json
+        if not data.get('username') or not data.get('password'):
+            return jsonify({"msg": "Se requieren username y password"}), 400
+        
+        # Crear el usuario administrador
+        admin_user = User(
+            username=data['username'],
+            email=data.get('email', f"{data['username']}@admin.com"),
+            password=data['password'],
+            is_active=True,
+            role='admin'
+        )
+        db.session.add(admin_user)
+        db.session.commit()
+        
+        return jsonify({
+            "msg": "Usuario administrador creado exitosamente",
+            "user": admin_user.serialize()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"msg": f"Error creando administrador: {str(e)}"}), 500

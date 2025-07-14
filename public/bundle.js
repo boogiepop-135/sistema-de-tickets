@@ -1001,7 +1001,8 @@ async function initDatabase() {
         const data = await response.json();
         
         if (response.ok) {
-            alert('Base de datos inicializada correctamente!\n\nUsuario administrador creado:\n- Levi / Leaguejinx1310- (admin)\n\nYa puedes iniciar sesión y crear más usuarios desde el panel de administración.');
+            // Mostrar modal para crear el primer administrador
+            showCreateAdminModal();
             return true;
         } else {
             alert(`Error: ${data.msg}`);
@@ -1010,6 +1011,117 @@ async function initDatabase() {
     } catch (error) {
         alert('Error de conexión al inicializar base de datos');
         return false;
+    }
+}
+
+// Función para mostrar modal de crear administrador
+function showCreateAdminModal() {
+    const modalHtml = `
+        <div class="modal fade" id="createAdminModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-user-shield me-2"></i>
+                            Crear Administrador Principal
+                        </h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Base de datos inicializada correctamente.</strong><br>
+                            Ahora crea tu usuario administrador principal para acceder al sistema.
+                        </div>
+                        <form id="createAdminForm">
+                            <div class="mb-3">
+                                <label for="adminUsername" class="form-label">Nombre de Usuario *</label>
+                                <input type="text" class="form-control" id="adminUsername" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="adminEmail" class="form-label">Email (opcional)</label>
+                                <input type="email" class="form-control" id="adminEmail">
+                            </div>
+                            <div class="mb-3">
+                                <label for="adminPassword" class="form-label">Contraseña *</label>
+                                <input type="password" class="form-control" id="adminPassword" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmAdminPassword" class="form-label">Confirmar Contraseña *</label>
+                                <input type="password" class="form-control" id="confirmAdminPassword" required>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" onclick="createAdmin()">
+                            <i class="fas fa-user-plus me-2"></i>
+                            Crear Administrador
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('createAdminModal'));
+    modal.show();
+}
+
+// Función para crear el administrador principal
+async function createAdmin() {
+    const username = document.getElementById('adminUsername').value;
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPassword').value;
+    const confirmPassword = document.getElementById('confirmAdminPassword').value;
+    
+    // Validaciones
+    if (!username || !password) {
+        alert('El nombre de usuario y la contraseña son obligatorios');
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        alert('Las contraseñas no coinciden');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('La contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+    
+    try {
+        const response = await fetchAPI('/api/create-admin', {
+            method: 'POST',
+            body: JSON.stringify({
+                username,
+                email: email || `${username}@admin.com`,
+                password
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(`¡Administrador creado exitosamente!\n\nUsuario: ${data.user.username}\nRol: ${data.user.role}\n\nYa puedes iniciar sesión con tus credenciales.`);
+            
+            // Cerrar modal
+            bootstrap.Modal.getInstance(document.getElementById('createAdminModal')).hide();
+            
+            // Limpiar modal del DOM
+            setTimeout(() => {
+                document.getElementById('createAdminModal').remove();
+            }, 300);
+            
+            // Redirigir a login
+            setTimeout(() => {
+                router.navigate('/login');
+            }, 1000);
+        } else {
+            alert(`Error: ${data.msg}`);
+        }
+    } catch (error) {
+        alert('Error de conexión al crear administrador');
     }
 }
 
