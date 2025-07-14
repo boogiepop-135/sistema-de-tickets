@@ -264,43 +264,54 @@ def admin_list_users():
     users = User.query.all()
     return jsonify([u.serialize() for u in users]), 200
 
-# Ruta para inicializar la base de datos (temporal para resolver el problema)
+# Ruta para inicializar la base de datos de forma segura (no borra datos existentes)
 @api.route('/init-database', methods=['POST'])
 def init_database():
     try:
-        # Eliminar todas las tablas existentes para evitar conflictos de esquema
-        db.drop_all()
-        
-        # Crear todas las tablas con el nuevo esquema
+        # Solo crear tablas si no existen (no borrar datos existentes)
         db.create_all()
         
-        # NO crear usuarios por defecto por seguridad
-        # Los usuarios deben ser creados manualmente después de la inicialización
+        # Verificar si ya existe un usuario admin
+        admin_exists = User.query.filter_by(role='admin').first()
         
-        # Commit para confirmar la creación de tablas
-        db.session.commit()
+        if admin_exists:
+            return jsonify({
+                "msg": "La base de datos ya está inicializada y tiene un administrador",
+                "admin_exists": True,
+                "admin_username": admin_exists.username,
+                "note": "El sistema está listo para usar. Puedes iniciar sesión."
+            }), 200
         
+        # Si no hay admin, permitir crear uno
         return jsonify({
-            "msg": "Base de datos inicializada correctamente",
-            "tables_dropped_and_recreated": True,
-            "note": "No se han creado usuarios por defecto. Use el endpoint /create-admin para crear el primer administrador."
+            "msg": "Base de datos verificada correctamente",
+            "tables_created": True,
+            "admin_exists": False,
+            "note": "Puedes crear el primer administrador ahora."
         }), 201
         
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"msg": f"Error inicializando base de datos: {str(e)}"}), 500
+        return jsonify({"msg": f"Error verificando base de datos: {str(e)}"}), 500
 
-# Ruta para crear el primer usuario administrador (solo funciona si no hay usuarios)
+# Ruta para crear el primer usuario administrador (solo funciona si no hay admin)
 @api.route('/create-admin', methods=['POST'])
 def create_admin():
     try:
-        # Verificar que no existan usuarios en la base de datos
-        if User.query.count() > 0:
-            return jsonify({"msg": "Ya existen usuarios en el sistema. No se puede crear un nuevo administrador."}), 400
+        # Verificar que no exista un administrador
+        admin_exists = User.query.filter_by(role='admin').first()
+        if admin_exists:
+            return jsonify({
+                "msg": f"Ya existe un administrador: {admin_exists.username}. El sistema está listo para usar.",
+                "admin_exists": True
+            }), 400
         
         data = request.json
         if not data.get('username') or not data.get('password'):
             return jsonify({"msg": "Se requieren username y password"}), 400
+        
+        # Verificar que el username no exista
+        if User.query.filter_by(username=data['username']).first():
+            return jsonify({"msg": "El nombre de usuario ya existe"}), 400
         
         # Crear el usuario administrador
         admin_user = User(
@@ -315,9 +326,37 @@ def create_admin():
         
         return jsonify({
             "msg": "Usuario administrador creado exitosamente",
-            "user": admin_user.serialize()
+            "user": admin_user.serialize(),
+            "system_ready": True
         }), 201
         
     except Exception as e:
         db.session.rollback()
         return jsonify({"msg": f"Error creando administrador: {str(e)}"}), 500
+
+# Ruta para verificar el estado del sistema
+@api.route('/system-status', methods=['GET'])
+def system_status():
+    try:
+        # Verificar si las tablas existen
+        try:
+            user_count = User.query.count()
+            admin_count = User.query.filter_by(role='admin').count()
+            ticket_count = Ticket.query.count()
+            tables_exist = True
+        except:
+            tables_exist = False
+            user_count = 0
+            admin_count = 0
+            ticket_count = 0
+        
+        return jsonify({
+            "tables_exist": tables_exist,
+            "user_count": user_count,
+            "admin_count": admin_count,
+            "ticket_count": ticket_count,
+            "system_ready": tables_exist and admin_count > 0
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"msg": f"Error verificando estado del sistema: {str(e)}"}), 500

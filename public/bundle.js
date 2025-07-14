@@ -1033,9 +1033,19 @@ function logout() {
     router.navigate('/');
 }
 
-// Función para inicializar la base de datos
+// Función para inicializar la base de datos de forma segura
 async function initDatabase() {
     try {
+        // Primero verificar el estado del sistema
+        const statusResponse = await fetchAPI('/api/system-status');
+        const statusData = await statusResponse.json();
+        
+        if (statusData.system_ready) {
+            alert(`El sistema ya está listo para usar!\n\nEstadísticas:\n- Usuarios: ${statusData.user_count}\n- Administradores: ${statusData.admin_count}\n- Tickets: ${statusData.ticket_count}\n\nPuedes iniciar sesión directamente.`);
+            return true;
+        }
+        
+        // Si no está listo, proceder con la inicialización
         const response = await fetchAPI('/api/init-database', {
             method: 'POST'
         });
@@ -1043,15 +1053,20 @@ async function initDatabase() {
         const data = await response.json();
         
         if (response.ok) {
-            // Mostrar modal para crear el primer administrador
-            showCreateAdminModal();
+            if (data.admin_exists) {
+                alert(`Sistema ya inicializado!\n\nAdministrador existente: ${data.admin_username}\n\nPuedes iniciar sesión directamente.`);
+                router.navigate('/login');
+            } else {
+                // Mostrar modal para crear el primer administrador
+                showCreateAdminModal();
+            }
             return true;
         } else {
             alert(`Error: ${data.msg}`);
             return false;
         }
     } catch (error) {
-        alert('Error de conexión al inicializar base de datos');
+        alert('Error de conexión al verificar/inicializar base de datos');
         return false;
     }
 }
